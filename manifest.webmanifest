@@ -1,0 +1,26 @@
+{
+  "name": "ポケモンGO 個体値ネーム変換",
+  "short_name": "個体値ネーム",
+  "description": "ポケモンGOの個体値からニックネーム用の名前を生成するツール。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0f3f7",
+  "theme_color": "#1f6feb",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

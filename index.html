@@ -6,6 +6,12 @@
 <title>ポケモンGO 個体値ネーム変換</title>
 <meta name="description" content="ポケモンGOの個体値(攻撃・防御・HP)から、ニックネームに付ける『割合＋16進数』の名前を生成するツール。">
 <meta name="theme-color" content="#1f6feb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="個体値ネーム">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGNsaXBQYXRoIGlkPSJjIj48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIzMCIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjKSI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjMyIiBmaWxsPSIjZWUzYTNhIi8+PHJlY3QgeT0iMzIiIHdpZHRoPSI2NCIgaGVpZ2h0PSIzMiIgZmlsbD0iI2ZmZmZmZiIvPjxyZWN0IHk9IjI5IiB3aWR0aD0iNjQiIGhlaWdodD0iNiIgZmlsbD0iIzFjMjUzMCIvPjwvZz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI5IiBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiMxYzI1MzAiIHN0cm9rZS13aWR0aD0iNSIvPjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjMwIiBmaWxsPSJub25lIiBzdHJva2U9IiMxYzI1MzAiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==">
 
 <link rel="canonical" href="https://fumimi23.github.io/pogo-name-formatter/">
@@ -349,6 +355,13 @@
     }, 1500);
   }
   copyBtn.addEventListener('click', copyName);
+
+  // PWA: Service Worker を登録(オフライン対応)。非対応・file:// 等では何もしない。
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>

@@ -2,8 +2,11 @@
 """モンスターボール風の画像を標準ライブラリだけで生成する。
 
 外部依存(PIL / ImageMagick 等)を増やさないため、zlib で PNG を自作する。
-- assets/ogp.png : OGP/Twitter カード用 (1200x630)
-描画ロジックは関数に分けてあり、他サイズの画像生成にも再利用しやすい。
+- assets/ogp.png        : OGP/Twitter カード用 (1200x630)
+- icons/icon-192.png     : PWA アイコン (192x192)
+- icons/icon-512.png     : PWA アイコン (512x512)
+PWA アイコンはマスク(maskable)で四隅が削られても欠けないよう、
+ボールをセーフゾーン(中央約72%)に収めて描画する。
 """
 import os
 import struct
@@ -68,6 +71,12 @@ def main():
     raw = render(w, h, w // 2, h // 2, 235, ACCENT)
     size = write_png(os.path.join(ROOT, "assets", "ogp.png"), w, h, raw)
     print(f"assets/ogp.png 生成: {w}x{h}, {size} bytes")
+
+    # PWA アイコン: 正方形。maskable のセーフゾーンに収めるため半径は辺の 0.36 倍
+    for s in (192, 512):
+        raw = render(s, s, s // 2, s // 2, int(s * 0.36), ACCENT)
+        size = write_png(os.path.join(ROOT, "icons", f"icon-{s}.png"), s, s, raw)
+        print(f"icons/icon-{s}.png 生成: {s}x{s}, {size} bytes")
 
 
 if __name__ == "__main__":
