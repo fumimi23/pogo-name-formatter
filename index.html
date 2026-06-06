@@ -70,12 +70,27 @@
     font-size: 1.15rem;
     text-align: center;
   }
-  .hint {
-    margin: 0 0 20px;
+  .lead {
+    margin: 0 0 10px;
     text-align: center;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+  .lead b { color: var(--accent); }
+  .howto {
+    margin: 0 0 18px;
+    font-size: 0.8rem;
     color: var(--sub);
   }
+  .howto summary {
+    cursor: pointer;
+    text-align: center;
+    color: var(--accent);
+    font-weight: 600;
+    list-style-position: inside;
+  }
+  .howto ul { margin: 8px 0 0; padding-left: 1.2em; line-height: 1.7; }
+  .howto code { background: var(--btn); border-radius: 4px; padding: 0 4px; }
 
   .stat {
     padding: 10px 0;
@@ -221,7 +236,18 @@
 <body>
   <main class="card">
     <h1>ポケモンGO 個体値ネーム変換</h1>
-    <p class="hint">スクショから読み取るか、数字タップ／＋−で調整できます</p>
+    <p class="lead">
+      個体値（攻撃・防御・HP）から、ニックネーム用の「割合＋16進数」の名前を作ります。<br>
+      例: 攻撃15・防御14・HP13 → <b>93.3 FED</b>（割合93.3% / 16進 F・E・D）
+    </p>
+    <details class="howto">
+      <summary>使い方</summary>
+      <ul>
+        <li><b>手入力</b>: 数字をタップ、または ＋− で 攻撃／防御／HP を指定</li>
+        <li><b>スクショ</b>: 鑑定画面を読み込み、各バー（攻撃→防御→HP）をタップ</li>
+        <li>カンスト（15/15/15）は文字数節約のため <code>100.0</code> ではなく <code>99.9</code> 表記</li>
+      </ul>
+    </details>
 
     <section class="shot">
       <div class="shot-head">📷 スクショから読み取る</div>
