@@ -172,28 +172,28 @@
       <div class="stat-row">
         <label>攻撃</label>
         <button type="button" class="step" data-delta="-1" aria-label="攻撃を減らす">−</button>
-        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="攻撃の値を選ぶ">15</button>
+        <button type="button" class="value" aria-haspopup="listbox" aria-expanded="false" aria-controls="picker-attack" aria-label="攻撃の値を選ぶ">15</button>
         <button type="button" class="step" data-delta="1" aria-label="攻撃を増やす">＋</button>
       </div>
-      <div class="picker" hidden></div>
+      <div class="picker" id="picker-attack" role="listbox" aria-label="攻撃の個体値" hidden></div>
     </div>
     <div class="stat" data-stat="defense">
       <div class="stat-row">
         <label>防御</label>
         <button type="button" class="step" data-delta="-1" aria-label="防御を減らす">−</button>
-        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="防御の値を選ぶ">15</button>
+        <button type="button" class="value" aria-haspopup="listbox" aria-expanded="false" aria-controls="picker-defense" aria-label="防御の値を選ぶ">15</button>
         <button type="button" class="step" data-delta="1" aria-label="防御を増やす">＋</button>
       </div>
-      <div class="picker" hidden></div>
+      <div class="picker" id="picker-defense" role="listbox" aria-label="防御の個体値" hidden></div>
     </div>
     <div class="stat" data-stat="hp">
       <div class="stat-row">
         <label>HP</label>
         <button type="button" class="step" data-delta="-1" aria-label="HPを減らす">−</button>
-        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="HPの値を選ぶ">15</button>
+        <button type="button" class="value" aria-haspopup="listbox" aria-expanded="false" aria-controls="picker-hp" aria-label="HPの値を選ぶ">15</button>
         <button type="button" class="step" data-delta="1" aria-label="HPを増やす">＋</button>
       </div>
-      <div class="picker" hidden></div>
+      <div class="picker" id="picker-hp" role="listbox" aria-label="HPの個体値" hidden></div>
     </div>
 
     <div class="result-box">
@@ -225,6 +225,8 @@
       b.className = 'pick';
       b.dataset.val = v;
       b.textContent = v;
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', 'false');
       picker.appendChild(b);
     }
   });
@@ -247,7 +249,9 @@
         btn.disabled = next < MIN || next > MAX;
       });
       stat.querySelectorAll('.pick').forEach(b => {
-        b.classList.toggle('selected', Number(b.dataset.val) === v);
+        const on = Number(b.dataset.val) === v;
+        b.classList.toggle('selected', on);
+        b.setAttribute('aria-selected', String(on));
       });
     });
     document.getElementById('result').textContent =
