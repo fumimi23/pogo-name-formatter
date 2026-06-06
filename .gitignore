@@ -4,3 +4,10 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# サンプルのスクショ(トレーナー名等の個人情報を含むためコミットしない)
+/samples/*.png
+/samples/*.jpg
+/samples/*.jpeg
+/samples/*.heic
+/samples/*.webp

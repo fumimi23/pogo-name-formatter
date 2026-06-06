@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>【実験】スクショから個体値を読む</title>
+<meta name="theme-color" content="#1f6feb">
+<style>
+  :root {
+    --bg: #f0f3f7; --card: #fff; --ink: #1c2530; --sub: #525c6c;
+    --accent: #1f6feb; --accent-ink: #fff; --line: #dde3ec; --btn: #eef2f8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; justify-content: center;
+    align-items: flex-start; padding: 20px 14px calc(20px + env(safe-area-inset-bottom));
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                 "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+  }
+  .card {
+    width: 100%; max-width: 460px; background: var(--card); border-radius: 18px;
+    box-shadow: 0 6px 24px rgba(28,37,48,.08); padding: 18px;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.1rem; text-align: center; }
+  .exp { margin: 0 0 14px; text-align: center; font-size: .72rem; color: var(--sub); }
+  .note {
+    background: #fff8e6; border: 1px solid #f0d98a; color: #6b5a1e;
+    border-radius: 10px; padding: 8px 10px; font-size: .76rem; margin-bottom: 14px;
+  }
+  .step { font-size: .9rem; font-weight: 700; margin: 12px 0 8px; }
+  .step small { font-weight: 400; color: var(--sub); }
+  input[type=file] { width: 100%; font-size: .9rem; }
+
+  .stage { position: relative; margin-top: 12px; touch-action: none; }
+  .stage canvas { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--line); }
+
+  .controls { margin-top: 14px; display: none; }
+  .controls.on { display: block; }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: .82rem; }
+  .slider-row label { width: 7.5em; color: var(--sub); }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row output { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .stat { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .stat:first-of-type { border-top: none; }
+  .stat label { flex: 1; font-weight: 600; }
+  .stat .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); }
+  .stat button { width: 44px; height: 44px; border: none; border-radius: 12px; background: var(--btn);
+    font-size: 1.4rem; line-height: 1; cursor: pointer; touch-action: manipulation; }
+  .stat button:active { background: #dce3ee; }
+  .stat button:disabled { opacity: .35; }
+  .stat .value { width: 1.6em; text-align: center; font-size: 1.4rem; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+
+  .result-box { margin-top: 16px; padding: 16px 12px; border-radius: 12px; background: #f6f8fc;
+    border: 1px solid var(--line); text-align: center; }
+  .result-label { margin: 0 0 6px; font-size: .7rem; letter-spacing: .08em; color: var(--sub); }
+  .result { font-size: 1.8rem; font-weight: 800; user-select: all; }
+
+  .btn { margin-top: 12px; width: 100%; height: 50px; border: none; border-radius: 12px;
+    font-size: 1rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.primary.done { background: #1a9e57; }
+  .btn.ghost { background: var(--btn); color: var(--ink); }
+  .links { margin-top: 14px; text-align: center; font-size: .8rem; }
+  .links a { color: var(--accent); }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>スクショから個体値を読む</h1>
+    <p class="exp">EXPERIMENT — 鑑定画面のバーを画素解析する実験ページ</p>
+    <div class="note">
+      実験的な機能です。提供サンプルに似た画面ではよく当たりますが、端末やUIが違うと外れることがあります。
+      検出後に値を手で直せます。
+    </div>
+
+    <div class="step">① 鑑定画面のスクショを選ぶ</div>
+    <input type="file" id="file" accept="image/*">
+
+    <div class="step" id="selectStep" style="display:none">
+      ② バーを順番に囲む <small id="selectHint"></small>
+    </div>
+    <div class="stage" id="stage" style="display:none">
+      <canvas id="view"></canvas>
+    </div>
+
+    <div class="controls" id="controls">
+      <button type="button" class="btn ghost" id="redo">選び直す</button>
+
+      <div class="step">③ 検出結果（必要なら手で修正）</div>
+      <div class="slider-row">
+        <label>色の感度</label>
+        <input type="range" id="thr" min="20" max="150" value="60">
+        <output id="thrOut">60</output>
+      </div>
+
+      <div class="stat" data-stat="attack">
+        <label>攻撃</label>
+        <span class="swatch" data-sw></span>
+        <button type="button" data-delta="-1">−</button>
+        <span class="value">0</span>
+        <button type="button" data-delta="1">＋</button>
+      </div>
+      <div class="stat" data-stat="defense">
+        <label>防御</label>
+        <span class="swatch" data-sw></span>
+        <button type="button" data-delta="-1">−</button>
+        <span class="value">0</span>
+        <button type="button" data-delta="1">＋</button>
+      </div>
+      <div class="stat" data-stat="hp">
+        <label>HP</label>
+        <span class="swatch" data-sw></span>
+        <button type="button" data-delta="-1">−</button>
+        <span class="value">0</span>
+        <button type="button" data-delta="1">＋</button>
+      </div>
+
+      <div class="result-box">
+        <p class="result-label">名前</p>
+        <div class="result" id="result">0.0 000</div>
+      </div>
+      <button type="button" class="btn primary" id="copy" aria-live="polite">名前をコピー</button>
+    </div>
+
+    <div class="links">
+      <a href="index.html">← 通常の入力ツールへ</a>
+    </div>
+  </main>
+
+<script>
+  const MIN = 0, MAX = 15;
+  const STATS = ['attack', 'defense', 'hp'];
+  const LABEL = { attack: '攻撃', defense: '防御', hp: 'HP' };
+
+  // ---- 純粋関数(node --test で検証する) ----
+  function clampIV(v) { return Math.max(MIN, Math.min(MAX, v)); }
+
+  // 塗り割合(0〜1)を個体値(0〜15)へ
+  function ivFromFill(frac) { return clampIV(Math.round(frac * 15)); }
+
+  // RGB の鮮やかさ(オレンジ/赤は大、灰/白は小)
+  function colorfulness(r, g, b) { return Math.max(r, g, b) - Math.min(r, g, b); }
+
+  // 列ごとの鮮やかさ配列から、色つきが続く右端の位置を割合で返す。
+  // minRun 連続で色つきの最右を採用し、孤立ノイズを無視する。
+  function fillFraction(cols, threshold, minRun) {
+    const n = cols.length;
+    if (n === 0) return 0;
+    const run = Math.max(1, minRun);
+    for (let x = n - 1; x >= run - 1; x--) {
+      let ok = true;
+      for (let k = 0; k < run; k++) {
+        if (cols[x - k] < threshold) { ok = false; break; }
+      }
+      if (ok) return (x + 1) / n;
+    }
+    return 0;
+  }
+
+  function formatName(a, d, h) {
+    let ratio = ((a + d + h) / 45 * 100).toFixed(1);
+    if (ratio === '100.0') ratio = '99.9';
+    const hex = [a, d, h].map(v => v.toString(16).toUpperCase()).join('');
+    return ratio + ' ' + hex;
+  }
+
+  if (typeof module !== 'undefined') {
+    module.exports = { clampIV, ivFromFill, colorfulness, fillFraction, formatName };
+  }
+
+  // ---- ここからブラウザ専用 ----
+  if (typeof document !== 'undefined') {
+    const iv = { attack: 0, defense: 0, hp: 0 };
+    const rois = {};            // stat -> {x,y,w,h} (画像座標)
+    const swatch = {};          // stat -> 検出した塗り色
+    let order = [];             // 選択待ちのステータス
+    let scale = 1;              // 表示倍率(画像px -> 表示px)
+    let img = null;
+
+    const fileInput = document.getElementById('file');
+    const stage = document.getElementById('stage');
+    const view = document.getElementById('view');
+    const vctx = view.getContext('2d');
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d', { willReadFrequently: true });
+    const controls = document.getElementById('controls');
+    const selectStep = document.getElementById('selectStep');
+    const selectHint = document.getElementById('selectHint');
+    const thr = document.getElementById('thr');
+    const thrOut = document.getElementById('thrOut');
+    const resultEl = document.getElementById('result');
+
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        img = im;
+        off.width = im.naturalWidth;
+        off.height = im.naturalHeight;
+        octx.drawImage(im, 0, 0);
+        const maxW = Math.min(440, im.naturalWidth);
+        scale = maxW / im.naturalWidth;
+        view.width = Math.round(im.naturalWidth * scale);
+        view.height = Math.round(im.naturalHeight * scale);
+        startSelection();
+      };
+      im.src = url;
+    });
+
+    function startSelection() {
+      order = STATS.slice();
+      for (const s of STATS) { delete rois[s]; }
+      controls.classList.remove('on');
+      stage.style.display = 'block';
+      selectStep.style.display = 'block';
+      redraw();
+      updateHint();
+    }
+
+    function updateHint() {
+      selectHint.textContent = order.length
+        ? `→ いま「${LABEL[order[0]]}」のバーを囲んでください`
+        : '';
+    }
+
+    function redraw(temp) {
+      vctx.drawImage(img, 0, 0, view.width, view.height);
+      for (const s of STATS) {
+        if (rois[s]) drawBox(rois[s], LABEL[s], '#1f6feb');
+      }
+      if (temp) drawBox(temp, LABEL[order[0]] || '', '#e8590c', true);
+    }
+
+    function drawBox(r, text, color, dashed) {
+      const x = r.x * scale, y = r.y * scale, w = r.w * scale, h = r.h * scale;
+      vctx.lineWidth = 2;
+      vctx.strokeStyle = color;
+      if (dashed) vctx.setLineDash([5, 4]); else vctx.setLineDash([]);
+      vctx.strokeRect(x, y, w, h);
+      vctx.setLineDash([]);
+      if (text) {
+        vctx.font = 'bold 12px sans-serif';
+        vctx.fillStyle = color;
+        vctx.fillText(text, x + 3, y - 4 < 10 ? y + 14 : y - 4);
+      }
+    }
+
+    // ---- ドラッグ選択(マウス/タッチ共通: Pointer Events) ----
+    let dragging = false, sx = 0, sy = 0;
+    function toImg(ev) {
+      const rect = view.getBoundingClientRect();
+      const px = (ev.clientX - rect.left) * (view.width / rect.width);
+      const py = (ev.clientY - rect.top) * (view.height / rect.height);
+      return { x: px / scale, y: py / scale };
+    }
+    view.addEventListener('pointerdown', (ev) => {
+      if (!img || order.length === 0) return;
+      dragging = true;
+      view.setPointerCapture(ev.pointerId);
+      const p = toImg(ev); sx = p.x; sy = p.y;
+    });
+    view.addEventListener('pointermove', (ev) => {
+      if (!dragging) return;
+      const p = toImg(ev);
+      redraw(rectFrom(sx, sy, p.x, p.y));
+    });
+    view.addEventListener('pointerup', (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      const p = toImg(ev);
+      const r = rectFrom(sx, sy, p.x, p.y);
+      if (r.w < 8 || r.h < 4) { redraw(); return; } // 誤タップは無視
+      const stat = order.shift();
+      rois[stat] = r;
+      redraw();
+      updateHint();
+      if (order.length === 0) finishSelection();
+    });
+
+    function rectFrom(x1, y1, x2, y2) {
+      return {
+        x: Math.min(x1, x2), y: Math.min(y1, y2),
+        w: Math.abs(x2 - x1), h: Math.abs(y2 - y1),
+      };
+    }
+
+    function finishSelection() {
+      controls.classList.add('on');
+      analyzeAll();
+    }
+
+    // ---- 解析 ----
+    function analyzeRoi(r, threshold) {
+      const ix = Math.round(r.x), iy = Math.round(r.y);
+      const iw = Math.round(r.w), ih = Math.round(r.h);
+      const data = octx.getImageData(ix, iy, iw, ih).data;
+      const y0 = Math.floor(ih * 0.25), y1 = Math.ceil(ih * 0.75);
+      const cols = new Array(iw).fill(0);
+      let sr = 0, sg = 0, sb = 0, sc = 0; // 色つき画素の平均色(スウォッチ用)
+      for (let cx = 0; cx < iw; cx++) {
+        let sum = 0, cnt = 0;
+        for (let cy = y0; cy < y1; cy++) {
+          const o = (cy * iw + cx) * 4;
+          const rr = data[o], gg = data[o + 1], bb = data[o + 2];
+          const cf = colorfulness(rr, gg, bb);
+          sum += cf; cnt++;
+          if (cf >= threshold) { sr += rr; sg += gg; sb += bb; sc++; }
+        }
+        cols[cx] = cnt ? sum / cnt : 0;
+      }
+      const frac = fillFraction(cols, threshold, 3);
+      const color = sc ? `rgb(${Math.round(sr/sc)},${Math.round(sg/sc)},${Math.round(sb/sc)})` : '#ccc';
+      return { iv: ivFromFill(frac), color };
+    }
+
+    function analyzeAll() {
+      const threshold = Number(thr.value);
+      for (const s of STATS) {
+        if (!rois[s]) continue;
+        const res = analyzeRoi(rois[s], threshold);
+        iv[s] = res.iv;
+        swatch[s] = res.color;
+      }
+      render();
+    }
+
+    function render() {
+      document.querySelectorAll('.stat').forEach(el => {
+        const s = el.dataset.stat;
+        el.querySelector('.value').textContent = iv[s];
+        el.querySelectorAll('button').forEach(b => {
+          const next = iv[s] + Number(b.dataset.delta);
+          b.disabled = next < MIN || next > MAX;
+        });
+        const sw = el.querySelector('[data-sw]');
+        if (sw) sw.style.background = swatch[s] || '#ccc';
+      });
+      resultEl.textContent = formatName(iv.attack, iv.defense, iv.hp);
+    }
+
+    thr.addEventListener('input', () => { thrOut.textContent = thr.value; analyzeAll(); });
+
+    document.querySelectorAll('.stat button').forEach(b => {
+      b.addEventListener('click', () => {
+        const s = b.closest('.stat').dataset.stat;
+        iv[s] = clampIV(iv[s] + Number(b.dataset.delta));
+        render();
+      });
+    });
+
+    document.getElementById('redo').addEventListener('click', startSelection);
+
+    // ---- コピー ----
+    const copyBtn = document.getElementById('copy');
+    let timer = null;
+    copyBtn.addEventListener('click', async () => {
+      const text = resultEl.textContent;
+      let ok = false;
+      if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+      }
+      if (!ok) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      copyBtn.textContent = ok ? 'コピーしました ✓' : 'コピーできませんでした';
+      copyBtn.classList.toggle('done', ok);
+      clearTimeout(timer);
+      timer = setTimeout(() => { copyBtn.textContent = '名前をコピー'; copyBtn.classList.remove('done'); }, 1500);
+    });
+  }
+</script>
+</body>
+</html>
