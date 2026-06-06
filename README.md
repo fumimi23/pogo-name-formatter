@@ -34,3 +34,13 @@
 インストール不要の単体 HTML ファイル。外部リソース（CDN・フォント・通信）に一切依存しないため、`index.html` を直接ブラウザで開けばオフラインでも動作する。
 
 公開先としては GitHub Pages（`main` ブランチのルート）を利用しており、上記の公開URLからアクセスできる。`index.html` を更新して `main` に取り込めば、自動的にサイトへ反映される。
+
+## 開発 / テスト
+
+名前生成ロジック `formatName` のテストを用意している。テストは `index.html` から関数を抽出して実ソースを検証するため、単一ファイル構成は維持している。
+
+```sh
+node --test
+```
+
+push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）で自動実行される。
