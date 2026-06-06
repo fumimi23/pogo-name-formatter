@@ -12,6 +12,7 @@
   .stat button { width: 2.5em; height: 2.5em; font-size: 1.2rem; }
   .stat .value { width: 2em; text-align: center; font-size: 1.2rem; }
   .result { margin-top: 24px; font-size: 1.6rem; font-weight: bold; }
+  #copy { margin-top: 12px; height: 2.8em; padding: 0 1.2em; font-size: 1rem; }
 </style>
 </head>
 <body>
@@ -37,6 +38,7 @@
   </div>
 
   <div class="result" id="result">100.0 FFF</div>
+  <button type="button" id="copy">名前をコピー</button>
 
 <script>
   const MIN = 0, MAX = 15;
@@ -66,6 +68,36 @@
   });
 
   render();
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  const copyBtn = document.getElementById('copy');
+  let copyTimer = null;
+  async function copyName() {
+    const text = document.getElementById('result').textContent;
+    let ok = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(text); ok = true; }
+      catch (e) { ok = false; }
+    }
+    if (!ok) ok = fallbackCopy(text);
+
+    copyBtn.textContent = ok ? 'コピーしました ✓' : 'コピーできませんでした';
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => { copyBtn.textContent = '名前をコピー'; }, 1500);
+  }
+  copyBtn.addEventListener('click', copyName);
 </script>
 </body>
 </html>
