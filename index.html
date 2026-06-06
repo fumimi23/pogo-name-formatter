@@ -43,6 +43,8 @@
     --line: #dde3ec;
     --btn: #eef2f8;
   }
+  /* 色の役割: --accent(青)は「押せる/リンク」専用。テキストリンクは色だけに頼らず下線も付ける。
+     ボタンや details(開閉) は形・三角マーカーで分かるため下線は不要。強調や出力例に accent は使わない。 */
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust: 100%; }
   body {
@@ -76,7 +78,13 @@
     font-size: 0.82rem;
     line-height: 1.6;
   }
-  .lead b { color: var(--accent); }
+  .lead b {
+    font-weight: 700;
+    background: var(--btn);
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-variant-numeric: tabular-nums;
+  }
   .howto {
     margin: 0 0 18px;
     font-size: 0.8rem;
@@ -211,8 +219,7 @@
     font-size: 0.78rem;
     color: var(--sub);
   }
-  .repo a { color: var(--accent); text-decoration: none; }
-  .repo a:hover { text-decoration: underline; }
+  .repo a { color: var(--accent); text-decoration: underline; }
 
   .shot {
     margin-bottom: 6px;
