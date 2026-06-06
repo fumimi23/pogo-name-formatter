@@ -152,7 +152,7 @@
 
     <div class="result-box">
       <p class="result-label">名前</p>
-      <div class="result" id="result">100.0 FFF</div>
+      <div class="result" id="result">99.9 FFF</div>
     </div>
     <button type="button" id="copy" aria-live="polite">名前をコピー</button>
   </main>
@@ -162,7 +162,9 @@
   const iv = { attack: 15, defense: 15, hp: 15 };
 
   function formatName(a, d, h) {
-    const ratio = ((a + d + h) / 45 * 100).toFixed(1);
+    // 100.0(15/15/15)のときだけ5文字になるため、文字数節約で 99.9 に置き換える
+    let ratio = ((a + d + h) / 45 * 100).toFixed(1);
+    if (ratio === '100.0') ratio = '99.9';
     const hex = [a, d, h].map(v => v.toString(16).toUpperCase()).join('');
     return ratio + ' ' + hex;
   }
