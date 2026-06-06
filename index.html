@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ポケモンGO 個体値ネーム変換</title>
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 16px; }
+  h1 { font-size: 1.2rem; }
+  .stat { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  .stat label { width: 4em; }
+  .stat button { width: 2.5em; height: 2.5em; font-size: 1.2rem; }
+  .stat .value { width: 2em; text-align: center; font-size: 1.2rem; }
+  .result { margin-top: 24px; font-size: 1.6rem; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>ポケモンGO 個体値ネーム変換</h1>
+
+  <div class="stat" data-stat="attack">
+    <label>攻撃</label>
+    <button type="button" data-delta="-1">−</button>
+    <span class="value">15</span>
+    <button type="button" data-delta="1">＋</button>
+  </div>
+  <div class="stat" data-stat="defense">
+    <label>防御</label>
+    <button type="button" data-delta="-1">−</button>
+    <span class="value">15</span>
+    <button type="button" data-delta="1">＋</button>
+  </div>
+  <div class="stat" data-stat="hp">
+    <label>HP</label>
+    <button type="button" data-delta="-1">−</button>
+    <span class="value">15</span>
+    <button type="button" data-delta="1">＋</button>
+  </div>
+
+  <div class="result" id="result">100.0 FFF</div>
+
+<script>
+  const MIN = 0, MAX = 15;
+  const iv = { attack: 15, defense: 15, hp: 15 };
+
+  function formatName(a, d, h) {
+    const ratio = ((a + d + h) / 45 * 100).toFixed(1);
+    const hex = [a, d, h].map(v => v.toString(16).toUpperCase()).join('');
+    return ratio + ' ' + hex;
+  }
+
+  function render() {
+    document.querySelectorAll('.stat').forEach(el => {
+      el.querySelector('.value').textContent = iv[el.dataset.stat];
+    });
+    document.getElementById('result').textContent =
+      formatName(iv.attack, iv.defense, iv.hp);
+  }
+
+  document.querySelectorAll('.stat button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stat = btn.closest('.stat').dataset.stat;
+      const delta = Number(btn.dataset.delta);
+      iv[stat] = Math.min(MAX, Math.max(MIN, iv[stat] + delta));
+      render();
+    });
+  });
+
+  render();
+</script>
+</body>
+</html>
