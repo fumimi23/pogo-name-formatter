@@ -50,19 +50,21 @@
   }
 
   .stat {
-    display: flex;
-    align-items: center;
-    gap: 12px;
     padding: 10px 0;
     border-top: 1px solid var(--line);
   }
   .stat:first-of-type { border-top: none; }
-  .stat label {
+  .stat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stat-row label {
     flex: 1;
     font-size: 1.05rem;
     font-weight: 600;
   }
-  .stat button {
+  .step {
     flex: 0 0 auto;
     width: 52px;
     height: 52px;
@@ -76,15 +78,50 @@
     touch-action: manipulation;
     user-select: none;
   }
-  .stat button:active { background: #dce3ee; transform: scale(0.94); }
-  .stat button:disabled { opacity: 0.35; cursor: default; }
-  .stat .value {
+  .step:active { background: #dce3ee; transform: scale(0.94); }
+  .step:disabled { opacity: 0.35; cursor: default; }
+  .value {
     flex: 0 0 auto;
-    width: 1.6em;
-    text-align: center;
+    min-width: 2.6em;
+    height: 52px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
     font-size: 1.6rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .value:active { background: #f1f4f9; }
+  .value[aria-expanded="true"] { border-color: var(--accent); background: #eef4ff; }
+
+  .picker {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .picker[hidden] { display: none; }
+  .pick {
+    height: 48px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .pick:active { background: #f1f4f9; }
+  .pick.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
   }
 
   .result-box {
@@ -129,25 +166,34 @@
 <body>
   <main class="card">
     <h1>ポケモンGO 個体値ネーム変換</h1>
-    <p class="hint">割合(小数第1位)＋半角スペース＋16進数(攻撃→防御→HP)</p>
+    <p class="hint">数字をタップして直接選ぶか、＋−で調整できます</p>
 
     <div class="stat" data-stat="attack">
-      <label>攻撃</label>
-      <button type="button" data-delta="-1" aria-label="攻撃を減らす">−</button>
-      <span class="value">15</span>
-      <button type="button" data-delta="1" aria-label="攻撃を増やす">＋</button>
+      <div class="stat-row">
+        <label>攻撃</label>
+        <button type="button" class="step" data-delta="-1" aria-label="攻撃を減らす">−</button>
+        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="攻撃の値を選ぶ">15</button>
+        <button type="button" class="step" data-delta="1" aria-label="攻撃を増やす">＋</button>
+      </div>
+      <div class="picker" hidden></div>
     </div>
     <div class="stat" data-stat="defense">
-      <label>防御</label>
-      <button type="button" data-delta="-1" aria-label="防御を減らす">−</button>
-      <span class="value">15</span>
-      <button type="button" data-delta="1" aria-label="防御を増やす">＋</button>
+      <div class="stat-row">
+        <label>防御</label>
+        <button type="button" class="step" data-delta="-1" aria-label="防御を減らす">−</button>
+        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="防御の値を選ぶ">15</button>
+        <button type="button" class="step" data-delta="1" aria-label="防御を増やす">＋</button>
+      </div>
+      <div class="picker" hidden></div>
     </div>
     <div class="stat" data-stat="hp">
-      <label>HP</label>
-      <button type="button" data-delta="-1" aria-label="HPを減らす">−</button>
-      <span class="value">15</span>
-      <button type="button" data-delta="1" aria-label="HPを増やす">＋</button>
+      <div class="stat-row">
+        <label>HP</label>
+        <button type="button" class="step" data-delta="-1" aria-label="HPを減らす">−</button>
+        <button type="button" class="value" aria-haspopup="true" aria-expanded="false" aria-label="HPの値を選ぶ">15</button>
+        <button type="button" class="step" data-delta="1" aria-label="HPを増やす">＋</button>
+      </div>
+      <div class="picker" hidden></div>
     </div>
 
     <div class="result-box">
@@ -160,6 +206,7 @@
 <script>
   const MIN = 0, MAX = 15;
   const iv = { attack: 15, defense: 15, hp: 15 };
+  const stats = document.querySelectorAll('.stat');
 
   function formatName(a, d, h) {
     // 100.0(15/15/15)のときだけ5文字になるため、文字数節約で 99.9 に置き換える
@@ -169,26 +216,76 @@
     return ratio + ' ' + hex;
   }
 
+  // 0〜15 の選択ボタンを各ステータスに生成
+  stats.forEach(stat => {
+    const picker = stat.querySelector('.picker');
+    for (let v = MIN; v <= MAX; v++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pick';
+      b.dataset.val = v;
+      b.textContent = v;
+      picker.appendChild(b);
+    }
+  });
+
+  function closePickers(except) {
+    stats.forEach(stat => {
+      if (stat !== except) {
+        stat.querySelector('.picker').hidden = true;
+        stat.querySelector('.value').setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
   function render() {
-    document.querySelectorAll('.stat').forEach(el => {
-      const v = iv[el.dataset.stat];
-      el.querySelector('.value').textContent = v;
-      el.querySelectorAll('button').forEach(btn => {
+    stats.forEach(stat => {
+      const v = iv[stat.dataset.stat];
+      stat.querySelector('.value').textContent = v;
+      stat.querySelectorAll('.step').forEach(btn => {
         const next = v + Number(btn.dataset.delta);
         btn.disabled = next < MIN || next > MAX;
+      });
+      stat.querySelectorAll('.pick').forEach(b => {
+        b.classList.toggle('selected', Number(b.dataset.val) === v);
       });
     });
     document.getElementById('result').textContent =
       formatName(iv.attack, iv.defense, iv.hp);
   }
 
-  document.querySelectorAll('.stat button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const stat = btn.closest('.stat').dataset.stat;
-      const delta = Number(btn.dataset.delta);
-      iv[stat] = Math.min(MAX, Math.max(MIN, iv[stat] + delta));
+  stats.forEach(stat => {
+    const name = stat.dataset.stat;
+    const valueBtn = stat.querySelector('.value');
+    const picker = stat.querySelector('.picker');
+
+    stat.querySelectorAll('.step').forEach(btn => {
+      btn.addEventListener('click', () => {
+        iv[name] = Math.min(MAX, Math.max(MIN, iv[name] + Number(btn.dataset.delta)));
+        render();
+      });
+    });
+
+    valueBtn.addEventListener('click', () => {
+      const willOpen = picker.hidden;
+      closePickers(stat);
+      picker.hidden = !willOpen;
+      valueBtn.setAttribute('aria-expanded', String(willOpen));
+    });
+
+    picker.addEventListener('click', e => {
+      const b = e.target.closest('.pick');
+      if (!b) return;
+      iv[name] = Number(b.dataset.val);
+      picker.hidden = true;
+      valueBtn.setAttribute('aria-expanded', 'false');
       render();
     });
+  });
+
+  // ステータス以外をタップしたら選択パネルを閉じる
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.stat')) closePickers(null);
   });
 
   render();
