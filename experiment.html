@@ -100,23 +100,23 @@
       <div class="stat" data-stat="attack">
         <label>攻撃</label>
         <span class="swatch" data-sw></span>
-        <button type="button" data-delta="-1">−</button>
+        <button type="button" data-delta="-1" aria-label="攻撃を減らす">−</button>
         <span class="value">0</span>
-        <button type="button" data-delta="1">＋</button>
+        <button type="button" data-delta="1" aria-label="攻撃を増やす">＋</button>
       </div>
       <div class="stat" data-stat="defense">
         <label>防御</label>
         <span class="swatch" data-sw></span>
-        <button type="button" data-delta="-1">−</button>
+        <button type="button" data-delta="-1" aria-label="防御を減らす">−</button>
         <span class="value">0</span>
-        <button type="button" data-delta="1">＋</button>
+        <button type="button" data-delta="1" aria-label="防御を増やす">＋</button>
       </div>
       <div class="stat" data-stat="hp">
         <label>HP</label>
         <span class="swatch" data-sw></span>
-        <button type="button" data-delta="-1">−</button>
+        <button type="button" data-delta="-1" aria-label="HPを減らす">−</button>
         <span class="value">0</span>
-        <button type="button" data-delta="1">＋</button>
+        <button type="button" data-delta="1" aria-label="HPを増やす">＋</button>
       </div>
 
       <div class="result-box">
@@ -199,6 +199,10 @@
       if (!f) return;
       const url = URL.createObjectURL(f);
       const im = new Image();
+      im.onerror = () => {
+        URL.revokeObjectURL(url);
+        alert('この画像を読み込めませんでした。PNG / JPEG をお試しください（HEIC は未対応の場合があります）。');
+      };
       im.onload = () => {
         URL.revokeObjectURL(url);
         img = im;
@@ -300,6 +304,7 @@
     function analyzeRoi(r, threshold) {
       const ix = Math.round(r.x), iy = Math.round(r.y);
       const iw = Math.round(r.w), ih = Math.round(r.h);
+      if (iw <= 0 || ih <= 0) return { iv: 0, color: '#ccc' };
       const data = octx.getImageData(ix, iy, iw, ih).data;
       const y0 = Math.floor(ih * 0.25), y1 = Math.ceil(ih * 0.75);
       const cols = new Array(iw).fill(0);
