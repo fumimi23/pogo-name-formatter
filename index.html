@@ -189,12 +189,42 @@
   }
   #copy:active { filter: brightness(0.92); }
   #copy.done { background: #1a9e57; }
+
+  .shot {
+    margin-bottom: 6px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .shot-head { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+  .shot input[type=file] { width: 100%; font-size: 0.88rem; }
+  .shot-hint { margin: 10px 0 0; font-size: 0.78rem; color: var(--sub); }
+  .stage { position: relative; margin-top: 10px; touch-action: manipulation; }
+  .stage canvas {
+    width: 100%; display: block; border-radius: 10px;
+    border: 1px solid var(--line); cursor: crosshair;
+  }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 0.82rem; }
+  .slider-row label { width: 6em; color: var(--sub); }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row output { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
   <main class="card">
     <h1>ポケモンGO 個体値ネーム変換</h1>
-    <p class="hint">数字をタップして直接選ぶか、＋−で調整できます</p>
+    <p class="hint">スクショから読み取るか、数字タップ／＋−で調整できます</p>
+
+    <section class="shot">
+      <div class="shot-head">📷 スクショから読み取る</div>
+      <input type="file" id="file" accept="image/*">
+      <p class="shot-hint" id="selectHint" style="display:none"></p>
+      <div class="stage" id="stage" style="display:none"><canvas id="view"></canvas></div>
+      <div class="slider-row" id="sliderRow" style="display:none">
+        <label for="thr">色の感度</label>
+        <input type="range" id="thr" min="20" max="150" value="60">
+        <output id="thrOut">60</output>
+      </div>
+    </section>
 
     <div class="stat" data-stat="attack">
       <div class="stat-row">
@@ -235,6 +265,43 @@
   const MIN = 0, MAX = 15;
   const iv = { attack: 15, defense: 15, hp: 15 };
   const stats = document.querySelectorAll('.stat');
+  const STATS = ['attack', 'defense', 'hp'];
+  const LABEL = { attack: '攻撃', defense: '防御', hp: 'HP' };
+  // スクショ解析: 空きトラック(灰)とみなす明るさ範囲。白いカード地/区切り(≈255)は除外。
+  const TRACK_LO = 200, TRACK_HI = 245, NEUTRAL = 30;
+
+  function clampIV(v) { return Math.max(MIN, Math.min(MAX, v)); }
+
+  // 色つき列数と灰色列数の比から個体値(0〜15)を出す。白い区切りは数えない。
+  function ivFromCounts(fill, grey) {
+    const total = fill + grey;
+    if (total <= 0) return 0;
+    return clampIV(Math.round(15 * fill / total));
+  }
+
+  // RGB の鮮やかさ(オレンジ/赤は大、灰/白は小)
+  function colorfulness(r, g, b) { return Math.max(r, g, b) - Math.min(r, g, b); }
+
+  // 1列の平均色を fill(塗り) / grey(空きトラック) / bg(白い区切り) に分類
+  function classifyColumn(meanCf, meanBr, fillThreshold) {
+    if (meanCf >= fillThreshold) return 'fill';
+    if (meanCf < NEUTRAL && meanBr >= TRACK_LO && meanBr <= TRACK_HI) return 'grey';
+    return 'bg';
+  }
+
+  // 真偽配列上で start を含む連続領域を、gapTol までの隙間を跨いで広げ {lo,hi} を返す
+  function growSpan(flags, start, gapTol) {
+    const n = flags.length;
+    let lo = start, hi = start, run = 0;
+    for (let i = start + 1; i < n; i++) {
+      if (flags[i]) { hi = i; run = 0; } else if (++run > gapTol) break;
+    }
+    run = 0;
+    for (let i = start - 1; i >= 0; i--) {
+      if (flags[i]) { lo = i; run = 0; } else if (++run > gapTol) break;
+    }
+    return { lo, hi };
+  }
 
   function formatName(a, d, h) {
     // 100.0(15/15/15)のときだけ5文字になるため、文字数節約で 99.9 に置き換える
@@ -321,6 +388,149 @@
   });
 
   render();
+
+  // ===== スクショから読み取る(画素解析で個体値を推定し、上の手入力UIに反映) =====
+  const fileInput = document.getElementById('file');
+  const stage = document.getElementById('stage');
+  const view = document.getElementById('view');
+  const vctx = view.getContext('2d');
+  const offc = document.createElement('canvas');
+  const octx = offc.getContext('2d', { willReadFrequently: true });
+  const sliderRow = document.getElementById('sliderRow');
+  const selectHint = document.getElementById('selectHint');
+  const thr = document.getElementById('thr');
+  const thrOut = document.getElementById('thrOut');
+
+  let shotImg = null, shotScale = 1, shotW = 0, shotH = 0, shotData = null;
+  let tapOrder = [];
+  const taps = {}, rois = {};
+
+  function at(x, y) { const o = (y * shotW + x) * 4; return [shotData[o], shotData[o + 1], shotData[o + 2]]; }
+  function isBarPixel(x, y, fillT) {
+    const [r, g, b] = at(x, y);
+    const c = colorfulness(r, g, b), br = (r + g + b) / 3;
+    return c >= fillT || (c < NEUTRAL && br >= TRACK_LO && br <= TRACK_HI);
+  }
+  function bigEnough(roi) { return roi && roi.w >= 16 && roi.h >= 5; }
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    im.onerror = () => {
+      URL.revokeObjectURL(url);
+      alert('この画像を読み込めませんでした。PNG / JPEG をお試しください（HEIC は未対応の場合があります）。');
+    };
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      shotImg = im; shotW = im.naturalWidth; shotH = im.naturalHeight;
+      offc.width = shotW; offc.height = shotH; octx.drawImage(im, 0, 0);
+      shotData = octx.getImageData(0, 0, shotW, shotH).data;
+      shotScale = Math.min(440, shotW) / shotW;
+      view.width = Math.round(shotW * shotScale);
+      view.height = Math.round(shotH * shotScale);
+      startSelection();
+    };
+    im.src = url;
+  });
+
+  function startSelection() {
+    tapOrder = STATS.slice();
+    for (const s of STATS) { delete taps[s]; delete rois[s]; }
+    stage.style.display = 'block';
+    sliderRow.style.display = 'flex';
+    selectHint.style.display = 'block';
+    redrawShot();
+    updateShotHint();
+  }
+  function updateShotHint() {
+    selectHint.textContent = tapOrder.length
+      ? `→ いま「${LABEL[tapOrder[0]]}」のバーをタップ`
+      : '読み取り完了。ズレたら下の ± で調整できます';
+  }
+  function redrawShot() {
+    vctx.drawImage(shotImg, 0, 0, view.width, view.height);
+    for (const s of STATS) if (rois[s]) drawShotBox(rois[s], LABEL[s]);
+  }
+  function drawShotBox(r, text) {
+    const x = r.x * shotScale, y = r.y * shotScale, w = r.w * shotScale, h = r.h * shotScale;
+    vctx.lineWidth = 2; vctx.strokeStyle = '#1f6feb'; vctx.setLineDash([]);
+    vctx.strokeRect(x, y, w, h);
+    vctx.font = 'bold 12px sans-serif'; vctx.fillStyle = '#1f6feb';
+    vctx.fillText(text, x + 3, y - 4 < 10 ? y + 14 : y - 4);
+  }
+  function shotToImg(ev) {
+    const rect = view.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (view.width / rect.width);
+    const py = (ev.clientY - rect.top) * (view.height / rect.height);
+    return { x: Math.round(px / shotScale), y: Math.round(py / shotScale) };
+  }
+  function detect(tx, ty, fillT) {
+    tx = Math.max(0, Math.min(shotW - 1, tx)); ty = Math.max(0, Math.min(shotH - 1, ty));
+    if (!isBarPixel(tx, ty, fillT)) {
+      for (let d = 1; d <= 60; d++) {
+        if (tx - d >= 0 && isBarPixel(tx - d, ty, fillT)) { tx -= d; break; }
+        if (tx + d < shotW && isBarPixel(tx + d, ty, fillT)) { tx += d; break; }
+      }
+    }
+    if (!isBarPixel(tx, ty, fillT)) return null;
+    const rowFlags = new Array(shotW);
+    for (let x = 0; x < shotW; x++) rowFlags[x] = isBarPixel(x, ty, fillT);
+    const hs = growSpan(rowFlags, tx, 30);
+    let cx = Math.round((hs.lo + hs.hi) / 2);
+    if (!isBarPixel(cx, ty, fillT)) cx = tx;
+    const colFlags = new Array(shotH);
+    for (let y = 0; y < shotH; y++) colFlags[y] = isBarPixel(cx, y, fillT);
+    const vs = growSpan(colFlags, ty, 4);
+    return { x: hs.lo, y: vs.lo, w: hs.hi - hs.lo + 1, h: vs.hi - vs.lo + 1 };
+  }
+  function analyzeRoi(roi, fillT) {
+    const { x: x0, y: y0, w, h } = roi;
+    if (w <= 0 || h <= 0) return 0;
+    const ya = Math.floor(y0 + h * 0.25), yb = Math.max(ya + 1, Math.ceil(y0 + h * 0.75));
+    let fill = 0, grey = 0;
+    for (let i = 0; i < w; i++) {
+      const x = x0 + i; let sumC = 0, sumB = 0, cnt = 0;
+      for (let y = ya; y < yb; y++) {
+        const [r, g, b] = at(x, y);
+        sumC += colorfulness(r, g, b); sumB += (r + g + b) / 3; cnt++;
+      }
+      const cls = classifyColumn(sumC / cnt, sumB / cnt, fillT);
+      if (cls === 'fill') fill++; else if (cls === 'grey') grey++;
+    }
+    return ivFromCounts(fill, grey);
+  }
+  function applyShotValues() {
+    const fillT = Number(thr.value);
+    for (const s of STATS) {
+      if (!taps[s]) continue;
+      const roi = detect(taps[s].x, taps[s].y, fillT);
+      if (bigEnough(roi)) rois[s] = roi;
+      if (!rois[s]) continue;
+      iv[s] = analyzeRoi(rois[s], fillT);
+    }
+    redrawShot();
+    closePickers(null);
+    render();
+  }
+  view.addEventListener('click', (ev) => {
+    if (!shotImg || tapOrder.length === 0) return;
+    const p = shotToImg(ev);
+    const stat = tapOrder[0];
+    const roi = detect(p.x, p.y, Number(thr.value));
+    if (!bigEnough(roi)) {
+      selectHint.textContent = `「${LABEL[stat]}」のバーを認識できませんでした。バーの中央あたりをもう一度タップ`;
+      return;
+    }
+    tapOrder.shift(); taps[stat] = p; rois[stat] = roi;
+    applyShotValues();
+    updateShotHint();
+  });
+  thr.addEventListener('input', () => {
+    thrOut.textContent = thr.value;
+    if (Object.keys(taps).length) applyShotValues();
+  });
 
   function fallbackCopy(text) {
     const ta = document.createElement('textarea');
