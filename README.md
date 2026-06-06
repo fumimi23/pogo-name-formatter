@@ -44,3 +44,5 @@ node --test
 ```
 
 push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）で自動実行される。
+
+favicon はインライン SVG（自己完結）。OGP 画像（`assets/ogp.png`）は外部ツールを使わず標準ライブラリだけで生成しており、`python3 tools/gen-images.py` で再生成できる。
