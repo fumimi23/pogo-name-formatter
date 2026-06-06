@@ -3,7 +3,7 @@
 
 外部依存(PIL / ImageMagick 等)を増やさないため、zlib で PNG を自作する。
 - assets/ogp.png : OGP/Twitter カード用 (1200x630)
-PWA 用アイコンも同じ描画ロジックで生成できるよう、関数を分けてある。
+描画ロジックは関数に分けてあり、他サイズの画像生成にも再利用しやすい。
 """
 import os
 import struct
