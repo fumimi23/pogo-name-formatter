@@ -190,6 +190,15 @@
   #copy:active { filter: brightness(0.92); }
   #copy.done { background: #1a9e57; }
 
+  .repo {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--sub);
+  }
+  .repo a { color: var(--accent); text-decoration: none; }
+  .repo a:hover { text-decoration: underline; }
+
   .shot {
     margin-bottom: 6px;
     padding-bottom: 14px;
@@ -259,6 +268,10 @@
       <div class="result" id="result">99.9 FFF</div>
     </div>
     <button type="button" id="copy" aria-live="polite">名前をコピー</button>
+
+    <p class="repo">
+      <a href="https://github.com/fumimi23/pogo-name-formatter" target="_blank" rel="noopener noreferrer" aria-label="ソースコード（GitHub・新規タブで開く）">ソースコード (GitHub)</a>
+    </p>
   </main>
 
 <script>
