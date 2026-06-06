@@ -5,40 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ポケモンGO 個体値ネーム変換</title>
 <style>
-  body { font-family: sans-serif; margin: 0; padding: 16px; }
-  h1 { font-size: 1.2rem; }
-  .stat { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
-  .stat label { width: 4em; }
-  .stat button { width: 2.5em; height: 2.5em; font-size: 1.2rem; }
-  .stat .value { width: 2em; text-align: center; font-size: 1.2rem; }
-  .result { margin-top: 24px; font-size: 1.6rem; font-weight: bold; }
-  #copy { margin-top: 12px; height: 2.8em; padding: 0 1.2em; font-size: 1rem; }
+  :root {
+    --bg: #f0f3f7;
+    --card: #ffffff;
+    --ink: #1c2530;
+    --sub: #525c6c;
+    --accent: #1f6feb;
+    --accent-ink: #ffffff;
+    --line: #dde3ec;
+    --btn: #eef2f8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                 "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border-radius: 18px;
+    box-shadow: 0 6px 24px rgba(28, 37, 48, 0.08);
+    padding: 20px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+    text-align: center;
+  }
+  .hint {
+    margin: 0 0 20px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--sub);
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+  }
+  .stat:first-of-type { border-top: none; }
+  .stat label {
+    flex: 1;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .stat button {
+    flex: 0 0 auto;
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 14px;
+    background: var(--btn);
+    color: var(--ink);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .stat button:active { background: #dce3ee; transform: scale(0.94); }
+  .stat button:disabled { opacity: 0.35; cursor: default; }
+  .stat .value {
+    flex: 0 0 auto;
+    width: 1.6em;
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-box {
+    margin-top: 22px;
+    padding: 18px 14px;
+    border-radius: 14px;
+    background: #f6f8fc;
+    border: 1px solid var(--line);
+    text-align: center;
+  }
+  .result-label {
+    margin: 0 0 6px;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--sub);
+  }
+  .result {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+    user-select: all;
+  }
+
+  #copy {
+    margin-top: 14px;
+    width: 100%;
+    height: 56px;
+    border: none;
+    border-radius: 14px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  #copy:active { filter: brightness(0.92); }
+  #copy.done { background: #1a9e57; }
 </style>
 </head>
 <body>
-  <h1>ポケモンGO 個体値ネーム変換</h1>
+  <main class="card">
+    <h1>ポケモンGO 個体値ネーム変換</h1>
+    <p class="hint">割合(小数第1位)＋半角スペース＋16進数(攻撃→防御→HP)</p>
 
-  <div class="stat" data-stat="attack">
-    <label>攻撃</label>
-    <button type="button" data-delta="-1">−</button>
-    <span class="value">15</span>
-    <button type="button" data-delta="1">＋</button>
-  </div>
-  <div class="stat" data-stat="defense">
-    <label>防御</label>
-    <button type="button" data-delta="-1">−</button>
-    <span class="value">15</span>
-    <button type="button" data-delta="1">＋</button>
-  </div>
-  <div class="stat" data-stat="hp">
-    <label>HP</label>
-    <button type="button" data-delta="-1">−</button>
-    <span class="value">15</span>
-    <button type="button" data-delta="1">＋</button>
-  </div>
+    <div class="stat" data-stat="attack">
+      <label>攻撃</label>
+      <button type="button" data-delta="-1" aria-label="攻撃を減らす">−</button>
+      <span class="value">15</span>
+      <button type="button" data-delta="1" aria-label="攻撃を増やす">＋</button>
+    </div>
+    <div class="stat" data-stat="defense">
+      <label>防御</label>
+      <button type="button" data-delta="-1" aria-label="防御を減らす">−</button>
+      <span class="value">15</span>
+      <button type="button" data-delta="1" aria-label="防御を増やす">＋</button>
+    </div>
+    <div class="stat" data-stat="hp">
+      <label>HP</label>
+      <button type="button" data-delta="-1" aria-label="HPを減らす">−</button>
+      <span class="value">15</span>
+      <button type="button" data-delta="1" aria-label="HPを増やす">＋</button>
+    </div>
 
-  <div class="result" id="result">100.0 FFF</div>
-  <button type="button" id="copy">名前をコピー</button>
+    <div class="result-box">
+      <p class="result-label">名前</p>
+      <div class="result" id="result">100.0 FFF</div>
+    </div>
+    <button type="button" id="copy" aria-live="polite">名前をコピー</button>
+  </main>
 
 <script>
   const MIN = 0, MAX = 15;
@@ -52,7 +169,12 @@
 
   function render() {
     document.querySelectorAll('.stat').forEach(el => {
-      el.querySelector('.value').textContent = iv[el.dataset.stat];
+      const v = iv[el.dataset.stat];
+      el.querySelector('.value').textContent = v;
+      el.querySelectorAll('button').forEach(btn => {
+        const next = v + Number(btn.dataset.delta);
+        btn.disabled = next < MIN || next > MAX;
+      });
     });
     document.getElementById('result').textContent =
       formatName(iv.attack, iv.defense, iv.hp);
@@ -94,8 +216,12 @@
     if (!ok) ok = fallbackCopy(text);
 
     copyBtn.textContent = ok ? 'コピーしました ✓' : 'コピーできませんでした';
+    copyBtn.classList.toggle('done', ok);
     clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => { copyBtn.textContent = '名前をコピー'; }, 1500);
+    copyTimer = setTimeout(() => {
+      copyBtn.textContent = '名前をコピー';
+      copyBtn.classList.remove('done');
+    }, 1500);
   }
   copyBtn.addEventListener('click', copyName);
 </script>
