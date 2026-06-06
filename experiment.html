@@ -290,6 +290,7 @@
           if (tx + d < W && isBarPixel(tx + d, ty, fillT)) { tx += d; break; }
         }
       }
+      if (!isBarPixel(tx, ty, fillT)) return null; // 近くにバーが見つからない=検出失敗
       const rowFlags = new Array(W);
       for (let x = 0; x < W; x++) rowFlags[x] = isBarPixel(x, ty, fillT);
       const hs = growSpan(rowFlags, tx, 30);
@@ -325,12 +326,21 @@
       return { iv: ivFromCounts(fill, grey), color };
     }
 
+    // 検出枠が小さすぎる(=外したタップ)かどうか
+    function bigEnough(roi) { return roi && roi.w >= 16 && roi.h >= 5; }
+
     view.addEventListener('click', (ev) => {
       if (!img || order.length === 0) return; // 3つ選び終えたらタップ無効(±/選び直すで調整)
       const p = toImg(ev);
-      const stat = order.shift();
+      const stat = order[0];
+      const roi = detect(p.x, p.y, Number(thr.value));
+      if (!bigEnough(roi)) {
+        selectHint.textContent = `「${LABEL[stat]}」のバーを認識できませんでした。バーの中央あたりをもう一度タップ`;
+        return; // 外したタップは消費せず、同じステータスを促す
+      }
+      order.shift();
       taps[stat] = p;
-      rois[stat] = detect(p.x, p.y, Number(thr.value));
+      rois[stat] = roi;
       redraw();
       updateHint();
       if (order.length === 0) finishSelection();
@@ -345,7 +355,9 @@
       const fillT = Number(thr.value);
       for (const s of STATS) {
         if (!taps[s]) continue;
-        rois[s] = detect(taps[s].x, taps[s].y, fillT);
+        const roi = detect(taps[s].x, taps[s].y, fillT);
+        if (bigEnough(roi)) rois[s] = roi; // 失敗時は前回の検出枠を維持
+        if (!rois[s]) continue;
         const res = analyzeRoi(rois[s], fillT);
         iv[s] = res.iv; swatch[s] = res.color;
       }

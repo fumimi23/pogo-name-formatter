@@ -75,6 +75,8 @@ test('growSpan: gapTol までの隙間を跨いで広げる', () => {
   assert.deepEqual(growSpan([F, T, T, F, F, T], 1, 1), { lo: 1, hi: 2 });
   // 左右両方向に広がる
   assert.deepEqual(growSpan([T, T, T, T, T], 2, 0), { lo: 0, hi: 4 });
+  // start が false(外したタップ相当)なら 1 点だけ返る → detect 側で検出失敗として弾く
+  assert.deepEqual(growSpan([F, F, F, F], 1, 1), { lo: 1, hi: 1 });
 });
 
 test('experiment と index の formatName が全 4096 通りで一致', () => {
