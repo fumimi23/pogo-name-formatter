@@ -239,6 +239,13 @@
   .slider-row label { width: 6em; color: var(--sub); }
   .slider-row input[type=range] { flex: 1; }
   .slider-row output { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }
+  .shot-manual {
+    margin-top: 10px; width: 100%; height: 40px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--btn); color: var(--ink); font-size: 0.85rem;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .shot-manual:active { background: #dce3ee; }
 </style>
 </head>
 <body>
@@ -267,6 +274,7 @@
         <input type="range" id="thr" min="20" max="150" value="60">
         <output id="thrOut">60</output>
       </div>
+      <button type="button" class="shot-manual" id="manualBtn" style="display:none">手動でバーを選ぶ</button>
     </section>
 
     <div class="stat" data-stat="attack">
@@ -348,6 +356,41 @@
       if (flags[i]) { lo = i; run = 0; } else if (++run > gapTol) break;
     }
     return { lo, hi };
+  }
+
+  function median(arr) {
+    const a = arr.slice().sort((p, q) => p - q);
+    const m = a.length >> 1;
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+  function pstdev(arr) {
+    const m = arr.reduce((s, v) => s + v, 0) / arr.length;
+    return Math.sqrt(arr.reduce((s, v) => s + (v - m) * (v - m), 0) / arr.length);
+  }
+
+  // 帯候補(各 {y0,y1,xl,w})から「xl・幅がほぼ同一で等間隔な3本」を選ぶ。鑑定バーの検出に使う。
+  // 見つからなければ null。間隔差＋幅/xlのばらつきが最小の組を採用する。
+  function pickBarTriple(bands) {
+    let best = null;
+    for (let i = 0; i < bands.length; i++) {
+      let grp = [bands[i]];
+      for (let j = 0; j < bands.length; j++) {
+        if (j !== i &&
+            Math.abs(bands[j].xl - bands[i].xl) <= 12 &&
+            Math.abs(bands[j].w - bands[i].w) <= 20) grp.push(bands[j]);
+      }
+      const seen = new Set();
+      grp = grp.filter(g => { const k = g.y0 + '_' + g.y1; if (seen.has(k)) return false; seen.add(k); return true; });
+      grp.sort((a, b) => a.y0 - b.y0);
+      for (let k = 0; k + 3 <= grp.length; k++) {
+        const tri = grp.slice(k, k + 3);
+        const c = tri.map(t => (t.y0 + t.y1) / 2);
+        const spacing = Math.abs((c[1] - c[0]) - (c[2] - c[1]));
+        const score = spacing + pstdev(tri.map(t => t.w)) + pstdev(tri.map(t => t.xl));
+        if (!best || score < best.score) best = { score, tri };
+      }
+    }
+    return best ? best.tri : null;
   }
 
   function formatName(a, d, h) {
@@ -447,10 +490,84 @@
   const selectHint = document.getElementById('selectHint');
   const thr = document.getElementById('thr');
   const thrOut = document.getElementById('thrOut');
+  const manualBtn = document.getElementById('manualBtn');
 
   let shotImg = null, shotScale = 1, shotW = 0, shotH = 0, shotData = null;
   let tapOrder = [];
   const taps = {}, rois = {};
+  let autoMode = false;
+
+  function showStageUI() {
+    stage.style.display = 'block';
+    sliderRow.style.display = 'flex';
+    selectHint.style.display = 'block';
+    manualBtn.style.display = 'block';
+  }
+
+  // 自動検出用: 暖色の塗り(R最大) または 灰トラック を「バー画素」とみなす
+  function isFillPix(r, g, b, fillT) { return colorfulness(r, g, b) >= fillT && r === Math.max(r, g, b); }
+  function isBarish(x, y, fillT) {
+    const [r, g, b] = at(x, y);
+    const brv = (r + g + b) / 3;
+    return isFillPix(r, g, b, fillT) || (colorfulness(r, g, b) < NEUTRAL && brv >= TRACK_LO && brv <= TRACK_HI);
+  }
+  // 1行のバー画素ラン([xl,xr])を、白ギャップを gap まで跨いで列挙
+  function barRunsInRow(y, fillT, gap) {
+    const res = []; let s = -1, last = -1, gr = 0;
+    for (let x = 0; x < shotW; x++) {
+      if (isBarish(x, y, fillT)) { if (s < 0) s = x; last = x; gr = 0; }
+      else if (s >= 0 && ++gr > gap) { res.push([s, last]); s = -1; gr = 0; }
+    }
+    if (s >= 0) res.push([s, last]);
+    return res;
+  }
+  // 画像全体から鑑定バー3本を検出。見つかれば [攻撃,防御,HP] の ROI、無ければ null。
+  function detectBars(fillT) {
+    const yTop = Math.floor(shotH * 0.5), yBot = Math.floor(shotH * 0.95);
+    const bands = [];
+    for (let y = yTop; y < yBot; y++) {
+      for (const [xl, xr] of barRunsInRow(y, fillT, 22)) {
+        const w = xr - xl + 1;
+        if (w < 250 || w > 720) continue;
+        let placed = false;
+        for (const b of bands) {
+          if (Math.abs(xl - b.xl) <= 25 && Math.abs(w - b.w) <= 70 && y - b.y1 <= 6) {
+            b.y1 = y; b.xls.push(xl); b.ws.push(w); placed = true; break;
+          }
+        }
+        if (!placed) bands.push({ y0: y, y1: y, xl, w, xls: [xl], ws: [w] });
+      }
+    }
+    const cand = bands.filter(b => b.y1 - b.y0 >= 12)
+      .map(b => ({ y0: b.y0, y1: b.y1, xl: Math.round(median(b.xls)), w: Math.round(median(b.ws)) }));
+    const tri = pickBarTriple(cand);
+    return tri ? tri.map(t => ({ x: t.xl, y: t.y0, w: t.w, h: t.y1 - t.y0 })) : null;
+  }
+
+  // 検出済みの rois を現在の感度で再解析して反映
+  function analyzeCurrent() {
+    const fillT = Number(thr.value);
+    for (const s of STATS) { if (rois[s]) iv[s] = analyzeRoi(rois[s], fillT); }
+    redrawShot();
+    closePickers(null);
+    render();
+  }
+
+  // 読み込み時: まず自動検出。3本見つかれば自動入力、ダメなら手動へフォールバック。
+  function tryAuto() {
+    autoMode = true;
+    tapOrder = [];
+    for (const s of STATS) { delete taps[s]; delete rois[s]; }
+    const tri = detectBars(Number(thr.value));
+    if (tri) {
+      rois.attack = tri[0]; rois.defense = tri[1]; rois.hp = tri[2];
+      analyzeCurrent();
+      selectHint.textContent = '自動で読み取りました。違っていたら ± で調整、または「手動でバーを選ぶ」';
+    } else {
+      selectHint.textContent = '自動検出できませんでした。バーを順番にタップしてください';
+      startSelection();
+    }
+  }
 
   function at(x, y) { const o = (y * shotW + x) * 4; return [shotData[o], shotData[o + 1], shotData[o + 2]]; }
   function isBarPixel(x, y, fillT) {
@@ -477,17 +594,17 @@
       shotScale = Math.min(440, shotW) / shotW;
       view.width = Math.round(shotW * shotScale);
       view.height = Math.round(shotH * shotScale);
-      startSelection();
+      showStageUI();
+      tryAuto();
     };
     im.src = url;
   });
 
   function startSelection() {
+    autoMode = false;
     tapOrder = STATS.slice();
     for (const s of STATS) { delete taps[s]; delete rois[s]; }
-    stage.style.display = 'block';
-    sliderRow.style.display = 'flex';
-    selectHint.style.display = 'block';
+    showStageUI();
     redrawShot();
     updateShotHint();
   }
@@ -576,8 +693,10 @@
   });
   thr.addEventListener('input', () => {
     thrOut.textContent = thr.value;
-    if (Object.keys(taps).length) applyShotValues();
+    if (autoMode) { if (rois.attack) analyzeCurrent(); }
+    else if (Object.keys(taps).length) applyShotValues();
   });
+  manualBtn.addEventListener('click', startSelection);
 
   function fallbackCopy(text) {
     const ta = document.createElement('textarea');
