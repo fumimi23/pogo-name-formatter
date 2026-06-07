@@ -96,3 +96,12 @@ test('pickBarTriple: xlがばらけたノイズだけなら null', () => {
   ];
   assert.equal(pickBarTriple(bands), null);
 });
+
+test('pickBarTriple: xl/幅が一致しても不等間隔なら採用しない', () => {
+  const bands = [
+    { y0: 100, y1: 130, xl: 143, w: 417 },
+    { y0: 200, y1: 230, xl: 143, w: 417 },
+    { y0: 900, y1: 930, xl: 143, w: 417 }, // 間隔100と700で不等間隔
+  ];
+  assert.equal(pickBarTriple(bands), null);
+});

@@ -359,11 +359,13 @@
   }
 
   function median(arr) {
+    if (!arr.length) return 0;
     const a = arr.slice().sort((p, q) => p - q);
     const m = a.length >> 1;
     return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
   }
   function pstdev(arr) {
+    if (!arr.length) return 0;
     const m = arr.reduce((s, v) => s + v, 0) / arr.length;
     return Math.sqrt(arr.reduce((s, v) => s + (v - m) * (v - m), 0) / arr.length);
   }
@@ -385,8 +387,10 @@
       for (let k = 0; k + 3 <= grp.length; k++) {
         const tri = grp.slice(k, k + 3);
         const c = tri.map(t => (t.y0 + t.y1) / 2);
-        const spacing = Math.abs((c[1] - c[0]) - (c[2] - c[1]));
-        const score = spacing + pstdev(tri.map(t => t.w)) + pstdev(tri.map(t => t.xl));
+        const g1 = c[1] - c[0], g2 = c[2] - c[1];
+        const avg = (g1 + g2) / 2;
+        if (avg <= 0 || Math.abs(g1 - g2) > 0.5 * avg) continue; // 等間隔でない三つ組は除外
+        const score = Math.abs(g1 - g2) + pstdev(tri.map(t => t.w)) + pstdev(tri.map(t => t.xl));
         if (!best || score < best.score) best = { score, tri };
       }
     }
