@@ -582,7 +582,7 @@
     rois.attack = tri[0]; rois.defense = tri[1]; rois.hp = tri[2];
     analyzeCurrent();
     const name = document.getElementById('result').textContent;
-    // 読み込んだ瞬間に自動コピーを試みる(非対応環境では下記ボタンでコピー)
+    // 読み込んだ瞬間に自動コピーを試みる(非対応環境では上のコピーボタンで)
     const ok = await copyText(name);
     flashCopy(shotCopy, ok);
     selectHint.textContent = (ok ? '✓ コピーしました: ' : '読み取り: ') + name +
