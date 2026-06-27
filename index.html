@@ -275,13 +275,13 @@
       <div class="shot-head">📷 スクショから読み取る</div>
       <input type="file" id="file" accept="image/*">
       <p class="shot-hint" id="selectHint" style="display:none"></p>
+      <button type="button" class="shot-copy" id="shotCopy" aria-live="polite" style="display:none">名前をコピー</button>
       <div class="stage" id="stage" style="display:none"><canvas id="view"></canvas></div>
       <div class="slider-row" id="sliderRow" style="display:none">
         <label for="thr">色の感度</label>
         <input type="range" id="thr" min="20" max="150" value="60">
         <output id="thrOut">60</output>
       </div>
-      <button type="button" class="shot-copy" id="shotCopy" aria-live="polite" style="display:none">名前をコピー</button>
       <button type="button" class="shot-manual" id="manualBtn" style="display:none">手動でバーを選ぶ</button>
     </section>
 
