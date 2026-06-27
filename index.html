@@ -246,6 +246,13 @@
     cursor: pointer; touch-action: manipulation;
   }
   .shot-manual:active { background: #dce3ee; }
+  .shot-copy {
+    margin-top: 10px; width: 100%; height: 48px; border: none; border-radius: 12px;
+    background: var(--accent); color: var(--accent-ink); font-size: 1rem; font-weight: 700;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .shot-copy:active { filter: brightness(0.92); }
+  .shot-copy.done { background: #1a9e57; }
 </style>
 </head>
 <body>
@@ -274,6 +281,7 @@
         <input type="range" id="thr" min="20" max="150" value="60">
         <output id="thrOut">60</output>
       </div>
+      <button type="button" class="shot-copy" id="shotCopy" aria-live="polite" style="display:none">名前をコピー</button>
       <button type="button" class="shot-manual" id="manualBtn" style="display:none">手動でバーを選ぶ</button>
     </section>
 
@@ -495,6 +503,7 @@
   const thr = document.getElementById('thr');
   const thrOut = document.getElementById('thrOut');
   const manualBtn = document.getElementById('manualBtn');
+  const shotCopy = document.getElementById('shotCopy');
 
   let shotImg = null, shotScale = 1, shotW = 0, shotH = 0, shotData = null;
   let tapOrder = [];
@@ -506,6 +515,7 @@
     sliderRow.style.display = 'flex';
     selectHint.style.display = 'block';
     manualBtn.style.display = 'block';
+    shotCopy.style.display = 'block';
   }
 
   // 自動検出用: 暖色の塗り(R最大) または 灰トラック を「バー画素」とみなす
@@ -558,19 +568,25 @@
   }
 
   // 読み込み時: まず自動検出。3本見つかれば自動入力、ダメなら手動へフォールバック。
-  function tryAuto() {
+  async function tryAuto() {
     autoMode = true;
     tapOrder = [];
     for (const s of STATS) { delete taps[s]; delete rois[s]; }
     const tri = detectBars(Number(thr.value));
-    if (tri) {
-      rois.attack = tri[0]; rois.defense = tri[1]; rois.hp = tri[2];
-      analyzeCurrent();
-      selectHint.textContent = '自動で読み取りました。違っていたら ± で調整、または「手動でバーを選ぶ」';
-    } else {
-      selectHint.textContent = '自動検出できませんでした。バーを順番にタップしてください';
+    if (!tri) {
       startSelection();
+      selectHint.textContent = '自動検出できませんでした。' +
+        (tapOrder.length ? `「${LABEL[tapOrder[0]]}」のバーをタップしてください` : '');
+      return;
     }
+    rois.attack = tri[0]; rois.defense = tri[1]; rois.hp = tri[2];
+    analyzeCurrent();
+    const name = document.getElementById('result').textContent;
+    // 読み込んだ瞬間に自動コピーを試みる(非対応環境では下記ボタンでコピー)
+    const ok = await copyText(name);
+    flashCopy(shotCopy, ok);
+    selectHint.textContent = (ok ? '✓ コピーしました: ' : '読み取り: ') + name +
+      '（違っていたら ± か「手動でバーを選ぶ」）';
   }
 
   function at(x, y) { const o = (y * shotW + x) * 4; return [shotData[o], shotData[o + 1], shotData[o + 2]]; }
@@ -715,26 +731,27 @@
     return ok;
   }
 
-  const copyBtn = document.getElementById('copy');
-  let copyTimer = null;
-  async function copyName() {
-    const text = document.getElementById('result').textContent;
+  async function copyText(text) {
     let ok = false;
     if (navigator.clipboard && window.isSecureContext) {
       try { await navigator.clipboard.writeText(text); ok = true; }
       catch (e) { ok = false; }
     }
     if (!ok) ok = fallbackCopy(text);
-
-    copyBtn.textContent = ok ? 'コピーしました ✓' : 'コピーできませんでした';
-    copyBtn.classList.toggle('done', ok);
-    clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copyBtn.textContent = '名前をコピー';
-      copyBtn.classList.remove('done');
+    return ok;
+  }
+  function flashCopy(btn, ok) {
+    btn.textContent = ok ? 'コピーしました ✓' : 'コピーできませんでした';
+    btn.classList.toggle('done', ok);
+    clearTimeout(btn._copyTimer);
+    btn._copyTimer = setTimeout(() => {
+      btn.textContent = '名前をコピー';
+      btn.classList.remove('done');
     }, 1500);
   }
-  copyBtn.addEventListener('click', copyName);
+  const copyBtn = document.getElementById('copy');
+  copyBtn.addEventListener('click', async () => flashCopy(copyBtn, await copyText(document.getElementById('result').textContent)));
+  shotCopy.addEventListener('click', async () => flashCopy(shotCopy, await copyText(document.getElementById('result').textContent)));
 
   // PWA: Service Worker を登録(オフライン対応)。非対応・file:// 等では何もしない。
   if ('serviceWorker' in navigator) {
