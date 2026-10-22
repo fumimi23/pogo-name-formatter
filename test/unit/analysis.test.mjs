@@ -13,7 +13,7 @@ function braceMatch(src, fromIndex) {
   return -1;
 }
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 // clampIV〜formatName は連続定義。定数を補って評価する。
 const start = html.indexOf('function clampIV');
