@@ -31,3 +31,9 @@ test('ivFromCounts: 色つき/(色つき+灰色) → 個体値', () => {
   assert.equal(ivFromCounts(10, 5), 10);
   assert.equal(ivFromCounts(13, 2), 13);
 });
+
+// #19 / #23 実画像では列数が数百になるので、分母が効くケースで式そのものを固定する
+test('ivFromCounts: 列数の合計が 15 でなくても比率で決まる', () => {
+  assert.equal(ivFromCounts(300, 150), 10);
+  assert.equal(ivFromCounts(100, 200), 5);
+});
