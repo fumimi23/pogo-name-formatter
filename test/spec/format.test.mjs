@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 // index.html から formatName 関数を抽出して、実際のソースを検証する。
 // (単一ファイル構成を保つため、ロジックを別ファイルに切り出さずソースから取り出す)
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 
 // 波括弧の対応を数えて関数本体を取り出す。インデントやネストした波括弧に依存しない。
 // (formatName の本体は文字列/コメントに波括弧を含まないため、単純なカウントで安全)
@@ -26,6 +26,7 @@ assert.ok(source, 'index.html から formatName を抽出できること (関数
 // 関数宣言を式にして評価する。formatName は DOM に依存しない純粋関数。
 const formatName = eval('(' + source + ')');
 
+// #1 名前の形式 / #8 カンストは 99.9 / #11
 test('仕様の代表例', () => {
   assert.equal(formatName(15, 15, 15), '99.9 FFF'); // カンストは文字数節約で 99.9
   assert.equal(formatName(0, 0, 0), '0.0 000');
@@ -34,6 +35,7 @@ test('仕様の代表例', () => {
   assert.equal(formatName(10, 11, 12), '73.3 ABC');
 });
 
+// #1 / #8 / #11
 test('全 4096 通りの構造的性質', () => {
   const FORMAT = /^(\d{1,3})\.(\d) ([0-9A-F]{3})$/;
   let perfectCount = 0;

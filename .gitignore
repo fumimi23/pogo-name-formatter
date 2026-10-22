@@ -11,3 +11,6 @@ Thumbs.db
 /samples/*.jpeg
 /samples/*.heic
 /samples/*.webp
+
+# Python (scripts/next-issue.py のテスト実行で生成される)
+__pycache__/

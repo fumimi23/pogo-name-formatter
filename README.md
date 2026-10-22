@@ -12,7 +12,7 @@
 個体値の割合(小数第1位) 半角スペース 個体値16進数(攻撃→防御→HP)
 ```
 
-- **個体値の割合**: `(攻撃 + 防御 + HP) / 45 * 100` を小数第1位で表示
+- **個体値の割合**: `(攻撃 + 防御 + HP) / 45 * 100` を小数第1位に四捨五入して表示
   - ただし `100.0`(15/15/15) のときのみ、文字数節約のため `99.9` と表示する
 - **個体値16進数**: 攻撃・防御・HP の各値(0〜15)を1桁の16進数(0〜F)で連結
 
@@ -41,14 +41,38 @@
 
 PWA に対応しており、公開URLをスマホのブラウザで開いて「ホーム画面に追加」するとアプリのように起動できる。Service Worker（`sw.js`）がアプリシェルをキャッシュするため、一度開けばオフラインでも利用できる。
 
-## 開発 / テスト
+## 開発
 
-名前生成ロジック `formatName`（`test/format.test.mjs`）と、スクショ解析の純粋関数 `ivFromCounts` / `classifyColumn` / `growSpan` / `colorfulness`（`test/analysis.test.mjs`）のテストを用意している。テストは `index.html` から関数を抽出して実ソースを検証するため、単一ファイル構成は維持している。
-
-```sh
-node --test
-```
-
-push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）で自動実行される。
+Node のバージョンは `.node-version`（nodenv）で固定している。リンター/フォーマッターは導入していない（外部依存ゼロの構成を保つため）。
 
 favicon はインライン SVG（自己完結）。OGP 画像（`assets/ogp.png`）は外部ツールを使わず標準ライブラリだけで生成しており、`python3 tools/gen-images.py` で再生成できる。
+
+## テスト
+
+テストは `index.html` から関数を抽出して実ソースを検証するため、単一ファイル構成は維持している。テストを仕様の台帳とみなし、3 層に分ける。
+
+- `test/spec/`: 約束の台帳。ここにある挙動が仕様で、各テストに対応 issue 番号を併記する（名前生成 `formatName`、スクショ推定の式 `ivFromCounts` など）。`next_issue_test.py` は開発フロー雛形の選択規則なので、対応 issue は無い
+- `test/unit/`: 実装都合のテスト。自由に変更・削除してよい（スクショのバー検出の判定など）
+- `test/invariants/`: システム全体を走査する横断不変条件
+
+```sh
+node --test          # JS のテスト（3 層すべて）
+sh scripts/check.sh  # ローカル CI 一式
+```
+
+## ローカル CI
+
+push 前に `.githooks/pre-push` が `scripts/check.sh` を実行し、失敗したら push を中止する。クローンごとに一度、次のコマンドで有効化する。
+
+```sh
+git config core.hooksPath .githooks
+```
+
+緊急時のみ `git push --no-verify` でスキップできる。GitHub Actions（`.github/workflows/ci.yml`）も main への push と Pull Request で同じ `scripts/check.sh` を実行する。
+
+## issue 運用
+
+- 1 issue = 1 セッションで進める。着手する issue は `python3 scripts/next-issue.py` で選ぶ
+- issue には優先度ラベル `P0` / `P1` / `P2` を必ず 1 つ付ける。着手中は `in-progress` ラベルを付けてアサインする
+- 他の issue 待ちのときは、本文に `Blocked by #N` 行を書く
+- リリース単位はマイルストーン（マイルストーン名 = タグ名）。残りが 0 になったら `sh scripts/release.sh <タグ>` で版を切る
