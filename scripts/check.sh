@@ -7,10 +7,8 @@
 set -e
 cd "$(CDPATH= cd "$(dirname "$0")/.." && pwd)"
 
-# 採用した lint / format チェックをここに置く(作成時に候補から選んだものを埋める)。
-# CI では整形を「適用」せず「差分があれば失敗」させる(--check / ci 系)。整形の適用は scripts/fmt.sh。
-echo "[check] lint / format"
-# 未導入: 外部依存ゼロ(package.json 無し)を保っているため。入れるときはここに配線する。
+# lint / format は未導入: 外部依存ゼロ(package.json 無し)を保っているため。
+# 入れるときはここに「差分があれば失敗」する --check / ci 系で配線し、整形の適用は scripts/fmt.sh に置く。
 
 # テストは 3 層(test/spec=約束の台帳 / test/unit=実装都合 / test/invariants=横断不変条件)。
 # 引数なしの node --test は test/ 配下を再帰的に拾うので、3 層すべてが走る。

@@ -21,23 +21,13 @@ const end = braceMatch(html, html.indexOf('function formatName', start));
 const block = html.slice(start, end);
 const consts = 'const MIN=0,MAX=15,TRACK_LO=200,TRACK_HI=245,NEUTRAL=30;';
 const api = eval(consts + block +
-  '\n;({clampIV,ivFromCounts,colorfulness,classifyColumn,growSpan,median,pstdev,pickBarTriple})');
-const { clampIV, ivFromCounts, colorfulness, classifyColumn, growSpan, median, pstdev, pickBarTriple } = api;
+  '\n;({clampIV,colorfulness,classifyColumn,growSpan,median,pstdev,pickBarTriple})');
+const { clampIV, colorfulness, classifyColumn, growSpan, median, pstdev, pickBarTriple } = api;
 
 test('clampIV は 0〜15 に丸める', () => {
   assert.equal(clampIV(7), 7);
   assert.equal(clampIV(20), 15);
   assert.equal(clampIV(-5), 0);
-});
-
-test('ivFromCounts: 色つき/(色つき+灰色) → 個体値', () => {
-  assert.equal(ivFromCounts(15, 0), 15);
-  assert.equal(ivFromCounts(0, 15), 0);
-  assert.equal(ivFromCounts(0, 0), 0);
-  assert.equal(ivFromCounts(4, 11), 4);
-  assert.equal(ivFromCounts(1, 14), 1);
-  assert.equal(ivFromCounts(10, 5), 10);
-  assert.equal(ivFromCounts(13, 2), 13);
 });
 
 test('colorfulness: 鮮やかさ = max-min', () => {

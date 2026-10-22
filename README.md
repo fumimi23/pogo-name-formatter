@@ -12,7 +12,7 @@
 個体値の割合(小数第1位) 半角スペース 個体値16進数(攻撃→防御→HP)
 ```
 
-- **個体値の割合**: `(攻撃 + 防御 + HP) / 45 * 100` を小数第1位で表示
+- **個体値の割合**: `(攻撃 + 防御 + HP) / 45 * 100` を小数第1位に四捨五入して表示
   - ただし `100.0`(15/15/15) のときのみ、文字数節約のため `99.9` と表示する
 - **個体値16進数**: 攻撃・防御・HP の各値(0〜15)を1桁の16進数(0〜F)で連結
 
@@ -51,8 +51,8 @@ favicon はインライン SVG（自己完結）。OGP 画像（`assets/ogp.png`
 
 テストは `index.html` から関数を抽出して実ソースを検証するため、単一ファイル構成は維持している。テストを仕様の台帳とみなし、3 層に分ける。
 
-- `test/spec/`: 約束の台帳。ここにある挙動が仕様で、各テストに対応 issue 番号を併記する（名前生成ロジック `formatName` など）
-- `test/unit/`: 実装都合のテスト。自由に変更・削除してよい（スクショ解析の純粋関数など）
+- `test/spec/`: 約束の台帳。ここにある挙動が仕様で、各テストに対応 issue 番号を併記する（名前生成 `formatName`、スクショ推定の式 `ivFromCounts` など）。`next_issue_test.py` は開発フロー雛形の選択規則なので、対応 issue は無い
+- `test/unit/`: 実装都合のテスト。自由に変更・削除してよい（スクショのバー検出の判定など）
 - `test/invariants/`: システム全体を走査する横断不変条件
 
 ```sh
@@ -68,7 +68,7 @@ push 前に `.githooks/pre-push` が `scripts/check.sh` を実行し、失敗し
 git config core.hooksPath .githooks
 ```
 
-緊急時のみ `git push --no-verify` でスキップできる。GitHub Actions（`.github/workflows/ci.yml`）も push / Pull Request 時に同じ `scripts/check.sh` を実行する。
+緊急時のみ `git push --no-verify` でスキップできる。GitHub Actions（`.github/workflows/ci.yml`）も main への push と Pull Request で同じ `scripts/check.sh` を実行する。
 
 ## issue 運用
 
